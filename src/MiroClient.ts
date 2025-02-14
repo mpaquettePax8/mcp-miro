@@ -1,5 +1,4 @@
-
-import fetch from 'node-fetch';
+import fetch, { Response } from 'node-fetch';
 
 interface MiroBoard {
   id: string;
@@ -29,7 +28,15 @@ export class MiroClient {
   constructor(private token: string) {}
 
   private async fetchApi(path: string, options: { method?: string; body?: any } = {}) {
-    const response = await fetch(`https://api.miro.com/v2${path}`, {
+    const url = `https://api.miro.com/v2${path}`;
+    console.log(`Making API request to: ${url}`);
+    console.log('Request headers:', {
+      'Authorization': 'Bearer [REDACTED]',
+      'Content-Type': 'application/json',
+      ...(options.body ? { 'Content-Length': JSON.stringify(options.body).length } : {})
+    });
+    
+    const response = await fetch(url, {
       method: options.method || 'GET',
       headers: {
         'Authorization': `Bearer ${this.token}`,
@@ -38,16 +45,42 @@ export class MiroClient {
       ...(options.body ? { body: JSON.stringify(options.body) } : {})
     });
     
+    console.log('Response status:', response.status);
+    console.log('Response headers:', Object.fromEntries([...response.headers.entries()]));
+    
     if (!response.ok) {
-      throw new Error(`Miro API error: ${response.status} ${response.statusText}`);
+      const errorBody = await response.text();
+      console.log('Error response body:', errorBody);
+      let errorText = '';
+      try {
+        const errorJson = JSON.parse(errorBody);
+        errorText = JSON.stringify(errorJson, null, 2);
+      } catch (e) {
+        errorText = errorBody;
+      }
+      
+      throw new Error(`Miro API error: ${response.status} ${response.statusText}\nResponse: ${errorText}`);
     }
 
-    return response.json();
+    const jsonResponse = await response.json();
+    console.log('Success response:', JSON.stringify(jsonResponse, null, 2));
+    return jsonResponse;
   }
 
   async getBoards(): Promise<MiroBoard[]> {
-    const response = await this.fetchApi('/boards') as MiroBoardsResponse;
-    return response.data;
+    try {
+      console.log('Fetching boards...');
+      const response = await this.fetchApi('/boards') as MiroBoardsResponse;
+      if (!response.data) {
+        console.error('Unexpected response format from /boards endpoint:', response);
+        return [];
+      }
+      console.log(`Found ${response.data.length} boards`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching boards:', error);
+      throw error;
+    }
   }
 
   async getBoardItems(boardId: string): Promise<MiroItem[]> {

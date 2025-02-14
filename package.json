@@ -5,7 +5,7 @@
   "type": "module",
   "publishConfig": {
     "access": "public"
-  },  
+  },
   "bin": {
     "mcp-miro": "./build/index.js"
   },
@@ -16,9 +16,9 @@
     "type": "git",
     "url": "git+https://github.com/evalstate/mcp-miro"
   },
-  "bugs":{
+  "bugs": {
     "url": "https://github.com/evalstate/mcp-miro/issues"
-  },  
+  },
   "scripts": {
     "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
     "prepare": "npm run build",
@@ -32,6 +32,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.24",
+    "@types/node-fetch": "^2.6.12",
     "@types/yargs": "^17.0.33",
     "typescript": "^5.3.3"
   }
