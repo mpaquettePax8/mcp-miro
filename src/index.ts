@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
-import yargs from "yargs/yargs";
+import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { MiroClient } from "./MiroClient.js";
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { Server } from "@modelcontextprotocol/sdk/server";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio";
 import {
   ListResourcesRequestSchema,
   ReadResourceRequestSchema,
@@ -12,7 +12,8 @@ import {
   CallToolRequestSchema,
   ListPromptsRequestSchema,
   GetPromptRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
+  Request,
+} from "@modelcontextprotocol/sdk/types";
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -51,7 +52,7 @@ const server = new Server(
 
 const miroClient = new MiroClient(oauthToken);
 
-server.setRequestHandler(ListResourcesRequestSchema, async () => {
+server.setRequestHandler(ListResourcesRequestSchema, async (request: Request<typeof ListResourcesRequestSchema>) => {
   const boards = await miroClient.getBoards();
 
   return {
@@ -64,7 +65,7 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => {
   };
 });
 
-server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+server.setRequestHandler(ReadResourceRequestSchema, async (request: Request<typeof ReadResourceRequestSchema>) => {
   const url = new URL(request.params.uri);
 
   if (!request.params.uri.startsWith("miro://board/")) {
@@ -361,11 +362,121 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           required: ["boardId", "shape"],
         },
       },
+      {
+        name: "create_connector",
+        description: "Create a connector between two items on a Miro board",
+        inputSchema: {
+          type: "object",
+          properties: {
+            boardId: {
+              type: "string",
+              description: "ID of the board to create the connector on",
+            },
+            startItem: {
+              type: "object",
+              description: "Start item connection details",
+              properties: {
+                item: {
+                  type: "string",
+                  description: "ID of the start item",
+                },
+                position: {
+                  type: "object",
+                  description: "Optional specific connection position",
+                  properties: {
+                    x: { type: "number", description: "X coordinate" },
+                    y: { type: "number", description: "Y coordinate" }
+                  }
+                },
+                snapTo: {
+                  type: "string",
+                  description: "Which side of the item to connect to",
+                  enum: ["top", "bottom", "left", "right", "auto"]
+                }
+              },
+              required: ["item"]
+            },
+            endItem: {
+              type: "object",
+              description: "End item connection details",
+              properties: {
+                item: {
+                  type: "string",
+                  description: "ID of the end item",
+                },
+                position: {
+                  type: "object",
+                  description: "Optional specific connection position",
+                  properties: {
+                    x: { type: "number", description: "X coordinate" },
+                    y: { type: "number", description: "Y coordinate" }
+                  }
+                },
+                snapTo: {
+                  type: "string",
+                  description: "Which side of the item to connect to",
+                  enum: ["top", "bottom", "left", "right", "auto"]
+                }
+              },
+              required: ["item"]
+            },
+            style: {
+              type: "object",
+              description: "Style properties for the connector",
+              properties: {
+                strokeColor: {
+                  type: "string",
+                  description: "Color of the connector line",
+                },
+                strokeWidth: {
+                  type: "number",
+                  description: "Width of the connector line",
+                },
+                strokeStyle: {
+                  type: "string",
+                  description: "Style of the connector line",
+                  enum: ["normal", "dashed"]
+                },
+                startStrokeCap: {
+                  type: "string",
+                  description: "Style of the start of the connector",
+                  enum: ["none", "arrow", "triangle", "circle"]
+                },
+                endStrokeCap: {
+                  type: "string",
+                  description: "Style of the end of the connector",
+                  enum: ["none", "arrow", "triangle", "circle"]
+                }
+              },
+              required: ["strokeColor", "strokeWidth"]
+            },
+            captions: {
+              type: "object",
+              description: "Optional text captions for the connector",
+              properties: {
+                start: {
+                  type: "string",
+                  description: "Text at the start of the connector"
+                },
+                middle: {
+                  type: "string",
+                  description: "Text in the middle of the connector"
+                },
+                end: {
+                  type: "string",
+                  description: "Text at the end of the connector"
+                }
+              }
+            }
+          },
+          required: ["boardId", "startItem", "endItem"],
+        },
+      },
     ],
   };
 });
 
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
+server.setRequestHandler(CallToolRequestSchema, async (request: Request<typeof CallToolRequestSchema>) => {
   switch (request.params.name) {
     case "list_boards": {
       const boards = await miroClient.getBoards();
@@ -482,12 +593,32 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       };
     }
 
+    case "create_connector": {
+      const { boardId, startItem, endItem, style, captions } = request.params.arguments as any;
+      
+      const connector = await miroClient.createConnector(boardId, {
+        startItem,
+        endItem,
+        style,
+        captions
+      });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Created connector ${connector.id} between items ${startItem.item} and ${endItem.item} on board ${boardId}`,
+          },
+        ],
+      };
+    }
+
     default:
       throw new Error("Unknown tool");
   }
 });
 
-server.setRequestHandler(ListPromptsRequestSchema, async () => {
+server.setRequestHandler(ListPromptsRequestSchema, async (request: Request<typeof ListPromptsRequestSchema>) => {
   return {
     prompts: [
       {
@@ -498,7 +629,7 @@ server.setRequestHandler(ListPromptsRequestSchema, async () => {
   };
 });
 
-server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+server.setRequestHandler(GetPromptRequestSchema, async (request: Request<typeof GetPromptRequestSchema>) => {
   if (request.params.name === "Working with MIRO") {
     const keyFactsPath = path.join(process.cwd(), 'resources', 'boards-key-facts.md');
     const keyFacts = await fs.readFile(keyFactsPath, 'utf-8');

@@ -24,6 +24,52 @@ interface MiroItemsResponse {
   cursor?: string;
 }
 
+interface ConnectorEndpoint {
+  item: string;  // Item ID
+  position?: {
+    x: number;
+    y: number;
+  };
+  snapTo?: 'top' | 'bottom' | 'left' | 'right' | 'auto';
+}
+
+interface ConnectorStyle {
+  strokeColor: string;
+  strokeWidth: number;
+  strokeStyle?: 'normal' | 'dashed';
+  startStrokeCap?: 'none' | 'arrow' | 'triangle' | 'circle';
+  endStrokeCap?: 'none' | 'arrow' | 'triangle' | 'circle';
+}
+
+interface ConnectorCreateRequest {
+  startItem: ConnectorEndpoint;
+  endItem: ConnectorEndpoint;
+  style?: ConnectorStyle;
+  captions?: {
+    start?: string;
+    middle?: string;
+    end?: string;
+  };
+}
+
+interface ConnectorResponse {
+  id: string;
+  type: 'connector';
+  startItem: ConnectorEndpoint;
+  endItem: ConnectorEndpoint;
+  style: ConnectorStyle;
+  captions?: {
+    start?: string;
+    middle?: string;
+    end?: string;
+  };
+}
+
+interface ConnectorsResponse {
+  data: ConnectorResponse[];
+  cursor?: string;
+}
+
 export class MiroClient {
   constructor(private token: string) {}
 
@@ -129,5 +175,34 @@ export class MiroClient {
       method: 'POST',
       body: data
     }) as Promise<MiroItem>;
+  }
+
+  async createConnector(boardId: string, data: ConnectorCreateRequest): Promise<ConnectorResponse> {
+    return this.fetchApi(`/boards/${boardId}/connectors`, {
+      method: 'POST',
+      body: data
+    }) as Promise<ConnectorResponse>;
+  }
+
+  async getConnectors(boardId: string, cursor?: string): Promise<ConnectorsResponse> {
+    const queryParams = cursor ? `?cursor=${cursor}` : '';
+    return this.fetchApi(`/boards/${boardId}/connectors${queryParams}`) as Promise<ConnectorsResponse>;
+  }
+
+  async getConnector(boardId: string, connectorId: string): Promise<ConnectorResponse> {
+    return this.fetchApi(`/boards/${boardId}/connectors/${connectorId}`) as Promise<ConnectorResponse>;
+  }
+
+  async updateConnector(boardId: string, connectorId: string, data: Partial<ConnectorCreateRequest>): Promise<ConnectorResponse> {
+    return this.fetchApi(`/boards/${boardId}/connectors/${connectorId}`, {
+      method: 'PATCH',
+      body: data
+    }) as Promise<ConnectorResponse>;
+  }
+
+  async deleteConnector(boardId: string, connectorId: string): Promise<void> {
+    await this.fetchApi(`/boards/${boardId}/connectors/${connectorId}`, {
+      method: 'DELETE'
+    });
   }
 }
