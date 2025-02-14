@@ -5,21 +5,20 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { MiroClient } from './MiroClient.js';
 
-// Create the transport and server
-const transport = new StdioServerTransport();
-const implementation = {
-  name: 'mcp-miro',
-  version: '0.1.1'
-};
+export async function startServer() {
+  // Create the transport and server
+  const transport = new StdioServerTransport();
+  const implementation = {
+    name: 'mcp-miro',
+    version: '0.1.1'
+  };
 
-const server = new Server(implementation, {
-  capabilities: {
-    tools: {}
-  }
-});
+  const server = new Server(implementation, {
+    capabilities: {
+      tools: {}
+    }
+  });
 
-// Connect the server to the transport
-server.connect(transport).catch((error: Error) => {
-  console.error('Failed to start server:', error);
-  process.exit(1);
-}); 
+  // Connect the server to the transport
+  await server.connect(transport);
+} 
