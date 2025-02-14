@@ -5,6 +5,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { MiroClient } from './MiroClient.js';
 
+// Create the transport and server
 const transport = new StdioServerTransport();
 const implementation = {
   name: 'mcp-miro',
