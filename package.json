@@ -20,7 +20,7 @@
     "url": "https://github.com/evalstate/mcp-miro/issues"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && chmod +x build/cli.js",
     "prepare": "npm run build",
     "watch": "tsc --watch",
     "inspector": "npx @modelcontextprotocol/inspector build/cli.js"
